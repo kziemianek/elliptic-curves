@@ -18,7 +18,7 @@ use crate::{
     PublicKey, Scalar, Sm2,
 };
 use elliptic_curve::{
-    generic_array::typenum::Unsigned,
+    array::typenum::Unsigned,
     ops::{LinearCombination, Reduce},
     point::AffineCoordinates,
     sec1::ToEncodedPoint,
@@ -140,7 +140,7 @@ impl PrehashVerifier<Signature> for VerifyingKey {
         let s = signature.s(); // NonZeroScalar checked at signature parse time
 
         // B4: calculate e'=Hv(M'~)
-        let e = Scalar::reduce_bytes(FieldBytes::from_slice(prehash));
+        let e = Scalar::reduce_bytes(FieldBytes::ref_from_slice(prehash));
 
         // B5: calculate t = (r' + s') modn, verification failed if t=0
         let t = *r + *s;

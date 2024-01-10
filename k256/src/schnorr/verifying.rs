@@ -37,7 +37,7 @@ impl VerifyingKey {
 
     /// Parse verifying key from big endian-encoded x-coordinate.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let maybe_affine_point = AffinePoint::decompact(FieldBytes::from_slice(bytes));
+        let maybe_affine_point = AffinePoint::decompact(FieldBytes::ref_from_slice(bytes));
         let affine_point = Option::from(maybe_affine_point).ok_or_else(Error::new)?;
         PublicKey::from_affine(affine_point)
             .map_err(|_| Error::new())?

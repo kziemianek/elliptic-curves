@@ -53,7 +53,7 @@ impl FieldElement {
     /// Decode [`FieldElement`] from a big endian byte slice.
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
         if slice.len() == 48 {
-            Option::from(Self::from_bytes(FieldBytes::from_slice(slice))).ok_or(Error)
+            Option::from(Self::from_bytes(FieldBytes::ref_from_slice(slice))).ok_or(Error)
         } else {
             Err(Error)
         }
