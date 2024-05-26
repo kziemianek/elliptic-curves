@@ -66,12 +66,13 @@ impl PrehashVerifier<Signature> for VerifyingKey {
         let prehash: [u8; 32] = prehash.try_into().map_err(|_| Error::new())?;
         let (r, s) = signature.split();
 
+
+        let mut hash = tagged_hash(CHALLENGE_TAG).clone();
+        hash.update(signature.r.to_bytes());
+        hash.update(self.to_bytes());
+        hash.update(prehash);
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
-            &tagged_hash(CHALLENGE_TAG)
-                .chain_update(signature.r.to_bytes())
-                .chain_update(self.to_bytes())
-                .chain_update(prehash)
-                .finalize(),
+            &hash.finalize()
         );
 
         let R = ProjectivePoint::lincomb(

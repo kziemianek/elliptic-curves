@@ -87,10 +87,11 @@ impl SigningKey {
             *a ^= b
         }
 
-        let rand = tagged_hash(NONCE_TAG)
-            .chain_update(t)
-            .chain_update(self.verifying_key.as_affine().x.to_bytes())
-            .chain_update(msg_digest)
+        let mut nonce_hash = tagged_hash(NONCE_TAG).clone();
+        nonce_hash.update(t);
+        nonce_hash.update(self.verifying_key.as_affine().x.to_bytes());
+        nonce_hash.update(msg_digest);
+        let rand = nonce_hash
             .finalize();
 
         let k = NonZeroScalar::try_from(&*rand)
@@ -101,11 +102,12 @@ impl SigningKey {
         let verifying_point = AffinePoint::from(k.verifying_key);
         let r = verifying_point.x.normalize();
 
+        let mut challenge_hash = tagged_hash(CHALLENGE_TAG).clone();
+        challenge_hash.update(r.to_bytes());
+        challenge_hash.update(self.verifying_key.to_bytes());
+        challenge_hash.update(msg_digest);
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
-            &tagged_hash(CHALLENGE_TAG)
-                .chain_update(r.to_bytes())
-                .chain_update(self.verifying_key.to_bytes())
-                .chain_update(msg_digest)
+            &challenge_hash.clone()
                 .finalize(),
         );
 
