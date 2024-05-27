@@ -185,6 +185,15 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
     digest
 }
 
+fn fixed_tagged_hash(tag: &[u8]) -> sha2_v08_wrapper::Sha256 {
+    use sha2_v08_wrapper::Digest;
+    let tag_hash = sha2_v08_wrapper::Sha256::digest(tag);
+    let mut digest = sha2_v08_wrapper::Sha256::new();
+    digest.input(tag_hash);
+    digest.input(tag_hash);
+    digest
+}
+
 // Test vectors from:
 // https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv
 #[cfg(test)]

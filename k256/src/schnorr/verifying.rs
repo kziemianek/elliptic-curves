@@ -1,6 +1,6 @@
 //! Taproot Schnorr verifying key.
 
-use super::{tagged_hash, Signature, CHALLENGE_TAG};
+use super::{tagged_hash, Signature, CHALLENGE_TAG, fixed_tagged_hash};
 use crate::{AffinePoint, FieldBytes, ProjectivePoint, PublicKey, Scalar};
 use elliptic_curve::{
     bigint::U256,
@@ -16,6 +16,7 @@ use signature::{hazmat::PrehashVerifier, DigestVerifier, Error, Result, Verifier
 
 #[cfg(feature = "serde")]
 use serdect::serde::{de, ser, Deserialize, Serialize};
+use sha2::digest::generic_array::GenericArray;
 
 /// Taproot Schnorr verifying key.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -64,15 +65,17 @@ impl PrehashVerifier<Signature> for VerifyingKey {
         prehash: &[u8],
         signature: &Signature,
     ) -> core::result::Result<(), Error> {
+        use sha2_v08_wrapper::Digest;
         let prehash: [u8; 32] = prehash.try_into().map_err(|_| Error::new())?;
         let (r, s) = signature.split();
 
+        let mut hasher = fixed_tagged_hash(CHALLENGE_TAG);
+        hasher.input(signature.r.to_bytes());
+        hasher.input(self.to_bytes());
+        hasher.input(prehash);
+        
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
-            &tagged_hash(CHALLENGE_TAG)
-                .chain_update(signature.r.to_bytes())
-                .chain_update(self.to_bytes())
-                .chain_update(prehash)
-                .finalize(),
+            GenericArray::from_slice(&hasher.result().as_slice())
         );
 
         let R = ProjectivePoint::lincomb(

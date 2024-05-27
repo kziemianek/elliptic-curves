@@ -1,6 +1,6 @@
 //! Taproot Schnorr signing key.
 
-use super::{tagged_hash, Signature, VerifyingKey, AUX_TAG, CHALLENGE_TAG, NONCE_TAG};
+use super::{tagged_hash, Signature, VerifyingKey, AUX_TAG, CHALLENGE_TAG, NONCE_TAG, fixed_tagged_hash};
 use crate::{
     AffinePoint, FieldBytes, NonZeroScalar, ProjectivePoint, PublicKey, Scalar, SecretKey,
 };
@@ -20,6 +20,7 @@ use signature::{
 
 #[cfg(feature = "serde")]
 use serdect::serde::{de, ser, Deserialize, Serialize};
+use sha2::digest::generic_array::GenericArray;
 
 #[cfg(debug_assertions)]
 use signature::hazmat::PrehashVerifier;
@@ -81,17 +82,22 @@ impl SigningKey {
         msg_digest: &[u8; 32],
         aux_rand: &[u8; 32],
     ) -> Result<Signature> {
-        let mut t = tagged_hash(AUX_TAG).chain_update(aux_rand).finalize();
+        use sha2_v08_wrapper::Digest;
+
+        let mut aux_hasher = fixed_tagged_hash(AUX_TAG);
+        aux_hasher.input(aux_rand);
+
+        let mut t = aux_hasher.result();
 
         for (a, b) in t.iter_mut().zip(self.secret_key.to_bytes().iter()) {
             *a ^= b
         }
+        let mut nonce_hasher = fixed_tagged_hash(NONCE_TAG);
+        nonce_hasher.input(t);
+        nonce_hasher.input(self.verifying_key.as_affine().x.to_bytes());
+        nonce_hasher.input(msg_digest);
 
-        let rand = tagged_hash(NONCE_TAG)
-            .chain_update(t)
-            .chain_update(self.verifying_key.as_affine().x.to_bytes())
-            .chain_update(msg_digest)
-            .finalize();
+        let rand = nonce_hasher.result();
 
         let k = NonZeroScalar::try_from(&*rand)
             .map(Self::from)
@@ -101,12 +107,13 @@ impl SigningKey {
         let verifying_point = AffinePoint::from(k.verifying_key);
         let r = verifying_point.x.normalize();
 
+        let mut challenge_hash = fixed_tagged_hash(CHALLENGE_TAG);
+        challenge_hash.input(r.to_bytes());
+        challenge_hash.input(self.verifying_key.to_bytes());
+        challenge_hash.input(msg_digest);
+
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
-            &tagged_hash(CHALLENGE_TAG)
-                .chain_update(r.to_bytes())
-                .chain_update(self.verifying_key.to_bytes())
-                .chain_update(msg_digest)
-                .finalize(),
+            &GenericArray::from_slice(challenge_hash.result().as_slice()),
         );
 
         let s = *secret_key + e * *self.secret_key;

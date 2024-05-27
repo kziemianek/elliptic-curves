@@ -5,7 +5,7 @@ description = """
 secp256k1 elliptic curve library written in pure Rust with support for ECDSA
 signing/verification/public-key recovery, Taproot Schnorr signatures (BIP340),
 Elliptic Curve Diffie-Hellman (ECDH), and general-purpose secp256k1 elliptic
-curve group operations which can be used to implement arbitrary protocols
+curve group operations which can be used to implement   arbitrary protocols
 """
 authors = ["RustCrypto Developers"]
 license = "Apache-2.0 OR MIT"
@@ -27,6 +27,7 @@ ecdsa-core = { version = "0.16.8", package = "ecdsa", optional = true, default-f
 hex-literal = { version = "0.4", optional = true }
 serdect = { version = "0.2", optional = true, default-features = false }
 sha2 = { version = "0.10", optional = true, default-features = false }
+sha2_v08_wrapper = { git = "https://github.com/kailai-wang/sha2_v08", default-features = false }
 signature = { version = "2", optional = true }
 
 [dev-dependencies]
